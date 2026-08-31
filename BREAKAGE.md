@@ -20,7 +20,7 @@ Entry template (copy this for each new entry):
 **what I believed (wrong):** modern type hint syntax works on any Python 3
 **what I tried (failed):** nothing, identified the cause immediately
 **actual cause:** Python version is below 3.10, which does not support the union pipe syntax
-**fix commit hash:** (fill after commit)
+**fix commit hash:** XXXXXX
 **regression test name:** (none needed, import-time failure)
 **what it changed upstream:** added `from __future__ import annotations` to all scripts as a standard first line
 
@@ -30,7 +30,7 @@ Entry template (copy this for each new entry):
 **what I believed (wrong):** pdfplumber extract_table() returns one row per transaction
 **what I tried (failed):** ran the parser as-is, got nothing
 **actual cause:** HDFC PDFs pack all values per column into a single cell separated by newlines. Each page returns 1 row, not N rows. The real transactions are inside the cells.
-**fix commit hash:** (fill after commit)
+**fix commit hash:** XXXXXX
 **regression test name:** (pending)
 **what it changed upstream:** rewrote parser to split cells by newline and use date column as the row anchor for multi-line narrations
 
@@ -40,6 +40,6 @@ Entry template (copy this for each new entry):
 **what I believed (wrong):** matching counterparty names as whole strings would catch them in narrations
 **what I tried (failed):** ran anonymiser, checked samples, names visible
 **actual cause:** business names are embedded inside narration strings without clean delimiters. Whole-string matching misses substrings. Some narrations were also flattened to just a label, losing all structure.
-**fix commit hash:** (fill after commit)
+**fix commit hash:** XXXXXX
 **regression test name:** (pending)
 **what it changed upstream:** (pending, fixing anonymiser now)
