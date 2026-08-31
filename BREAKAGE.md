@@ -43,3 +43,13 @@ Entry template (copy this for each new entry):
 **fix commit hash:** XXXXXX
 **regression test name:** (pending)
 **what it changed upstream:** (pending, fixing anonymiser now)
+
+### B04: parser merging multiple transactions into single rows
+
+**symptom:** 233 of 596 rows had multiple transactions jammed into one row, narrations 500+ characters
+**what I believed (wrong):** using date as row anchor would cleanly separate transactions
+**what I tried (failed):** initial parser with date-anchored splitting
+**actual cause:** HDFC PDF packs all column values into single cells per page. Multi-line narrations and adjacent transactions are indistinguishable when split by newline alone. No reliable delimiter exists between transactions within a cell.
+**fix commit hash:** (filtered instead of fixed, kept 363 clean rows)
+**regression test name:** (not applicable, workaround not fix)
+**what it changed upstream:** added filter script to isolate clean rows for format reference. Accepted 363 of 596 as sufficient for provenance calibration. Full parser fix is not worth the hours given that these rows serve as format reference only, not as input data.
