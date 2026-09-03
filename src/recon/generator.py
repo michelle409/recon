@@ -222,6 +222,7 @@ def run_pipeline(
 ) -> GroundTruth:
     rng = random.Random(seed)
     do_all = corruption_set == "all"
+    do_none = corruption_set == "none"
 
     # ── STEP 1: clean world ───────────────────────────────────────────────────
     settlements, lines = generate_clean(rng, n_settlements)
@@ -229,8 +230,9 @@ def run_pipeline(
     _assert_ties(world, "clean world")
 
     # ── STEP 2: settlement-side structural corruptions ────────────────────────
-    recs = corruptions.apply_c04(world, rng)
-    world.corruption_records.extend(recs)
+    if not do_none:
+        recs = corruptions.apply_c04(world, rng)
+        world.corruption_records.extend(recs)
 
     if do_all:
         recs = corruptions.apply_h03(world, rng)
@@ -256,8 +258,9 @@ def run_pipeline(
         world.credit_to_settlements[cid] = [s.settlement_id]
 
     # ── STEP 4: C06 per_line_rounding_drift ───────────────────────────────────
-    recs = corruptions.apply_c06(world, rng)
-    world.corruption_records.extend(recs)
+    if not do_none:
+        recs = corruptions.apply_c06(world, rng)
+        world.corruption_records.extend(recs)
 
     # ── STEP 5: bank-side structural ─────────────────────────────────────────
     h01_used_sids: set[str] = set()
@@ -277,21 +280,24 @@ def run_pipeline(
 
     # ── STEP 6: bank-side information-destroying ──────────────────────────────
     modified: set[str] = set()
-    recs = corruptions.apply_c01(world, rng, modified)
-    world.corruption_records.extend(recs)
-    recs = corruptions.apply_c02(world, rng, modified)
-    world.corruption_records.extend(recs)
+    if not do_none:
+        recs = corruptions.apply_c01(world, rng, modified)
+        world.corruption_records.extend(recs)
+        recs = corruptions.apply_c02(world, rng, modified)
+        world.corruption_records.extend(recs)
 
     if do_all:
         recs = corruptions.apply_h02(world, rng, modified)
         world.corruption_records.extend(recs)
 
-    recs = corruptions.apply_c05(world, rng)
-    world.corruption_records.extend(recs)
+    if not do_none:
+        recs = corruptions.apply_c05(world, rng)
+        world.corruption_records.extend(recs)
 
     # ── STEP 7: C03 duplicate_export ─────────────────────────────────────────
-    recs = corruptions.apply_c03(world, rng)
-    world.corruption_records.extend(recs)
+    if not do_none:
+        recs = corruptions.apply_c03(world, rng)
+        world.corruption_records.extend(recs)
 
     # ── STEP 8: emit ─────────────────────────────────────────────────────────
     out_path.mkdir(parents=True, exist_ok=True)
@@ -393,7 +399,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--settlements", type=int, default=20)
     parser.add_argument(
-        "--corruption-set", choices=["seen", "all"], default="seen"
+        "--corruption-set", choices=["seen", "all", "none"], default="seen"
     )
     parser.add_argument("--out", type=Path, default=Path("data/generated"))
     args = parser.parse_args()

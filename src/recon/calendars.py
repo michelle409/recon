@@ -49,3 +49,21 @@ def business_days_distance(date_a: str, date_b: str) -> int:
         if is_business_day(d.isoformat()):
             count += 1
     return count
+
+
+def business_days_between(date_a: str, date_b: str) -> int:
+    """Signed business-day count from date_a to date_b.
+    Positive if date_b is later; negative if earlier; zero if equal."""
+    d_a = datetime.date.fromisoformat(date_a)
+    d_b = datetime.date.fromisoformat(date_b)
+    if d_a == d_b:
+        return 0
+    if d_b < d_a:
+        return -business_days_between(date_b, date_a)
+    count = 0
+    d = d_a
+    while d < d_b:
+        d += datetime.timedelta(days=1)
+        if is_business_day(d.isoformat()):
+            count += 1
+    return count
