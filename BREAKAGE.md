@@ -53,3 +53,13 @@ Entry template (copy this for each new entry):
 **fix commit hash:** (filtered instead of fixed, kept 363 clean rows)
 **regression test name:** (not applicable, workaround not fix)
 **what it changed upstream:** added filter script to isolate clean rows for format reference. Accepted 363 of 596 as sufficient for provenance calibration. Full parser fix is not worth the hours given that these rows serve as format reference only, not as input data.
+
+### B05: fuzzy stage ordering caught before code
+
+**symptom:** caught in spec review, not in running code
+**what I believed (wrong):** fuzzy should run after amount+date as a fallback
+**what I tried (failed):** n/a, caught before implementation
+**actual cause:** PROPOSE is terminal. A two-way amount tie exits as PROPOSE before narration is ever consulted. Fuzzy (narration similarity + exact amount + date) has strictly more evidence than amount+date alone and must run first.
+**fix commit hash:** (next commit)
+**regression test name:** test_fuzzy_disambiguates_amount_tie
+**what it changed upstream:** stage order in matcher pipeline
