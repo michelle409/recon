@@ -54,6 +54,18 @@ Entry template (copy this for each new entry):
 **regression test name:** (not applicable, workaround not fix)
 **what it changed upstream:** added filter script to isolate clean rows for format reference. Accepted 363 of 596 as sufficient for provenance calibration. Full parser fix is not worth the hours given that these rows serve as format reference only, not as input data.
 
+### B06: clubbed credit auto-matched despite amount mismatch
+
+**symptom:** held-out run crashed with journal imbalance of 25265745
+paise on bc_021 (H01 clubbed credit)
+**what I believed (wrong):** exact amount verification on all stages
+would reject a clubbed credit automatically
+**what I tried (failed):** ran held-out set for the first time
+**actual cause:** `_stage_exact_utr` matched a UTR token from the narration without verifying `credit.amount_paise == settlement.amount_paise`. A H01 clubbed credit carries the first source settlement's narration (including its UTR) but has `amount = setl_1.amount + setl_2.amount`. Exact UTR found the token and promoted the result to AUTO_MATCH with no amount guard. The ledger then computed `diff = clubbed_credit.amount − setl_1.amount = setl_2.amount` (25 M+ paise), which exceeded the 10-paise rounding tolerance and raised.
+**fix commit hash:** (next commit)
+**regression test name:** test_clubbed_credit_not_auto_matched
+**what it changed upstream:** `_stage_exact_utr` and `_stage_partial_utr` now reject a UTR match when `credit.amount_paise ≠ settlement.amount_paise`, letting the credit fall through. `_stage_pair_sum` gained a second detection pass: one credit whose amount equals the sum of two pool settlements routes as PROPOSE/pair_sum (ledger derives CLUBBED_CREDIT_SUSPECTED from that combination).
+
 ### B05: fuzzy stage ordering caught before code
 
 **symptom:** caught in spec review, not in running code

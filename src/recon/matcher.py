@@ -185,8 +185,8 @@ def _stage_exact_utr(
     pool: set[str],
     verification: dict[str, str],
 ) -> tuple[list[MatchCandidate], list[dict]]:
-    utr_to_sid = {
-        s["utr"]: s["settlement_id"]
+    utr_to_setl = {
+        s["utr"]: s
         for s in settlements
         if s["settlement_id"] in pool
     }
@@ -197,10 +197,11 @@ def _stage_exact_utr(
     for c in credits:
         matched_sid: str | None = None
         for token in _utr_tokens(c["narration_raw"]):
-            sid = utr_to_sid.get(token)
-            if sid and sid in pool:
-                matched_sid = sid
-                break
+            s = utr_to_setl.get(token)
+            if s and s["settlement_id"] in pool:
+                if int(c["amount_paise"]) == int(s["amount_paise"]):
+                    matched_sid = s["settlement_id"]
+                    break
         if matched_sid:
             candidates.append(_make_candidate(
                 c["credit_id"], AUTO_MATCH, [matched_sid], "exact_utr",
@@ -232,7 +233,7 @@ def _stage_partial_utr(
         matched_sid: str | None = None
         for token in _utr_tokens(c["narration_raw"]):
             for s in pool_setls:
-                if token in s["utr"]:
+                if token in s["utr"] and int(c["amount_paise"]) == int(s["amount_paise"]):
                     matched_sid = s["settlement_id"]
                     break
             if matched_sid:
@@ -562,6 +563,28 @@ def _stage_pair_sum(
                         found = True
                         break
                 if found:
+                    break
+            if found:
+                break
+
+    # detect clubbed credits: one credit whose amount = sum of two pool settlements
+    for c in credits:
+        if c["credit_id"] in matched_cids:
+            continue
+        credit_amt = int(c["amount_paise"])
+        found = False
+        for i, s1 in enumerate(pool_setls):
+            for s2 in pool_setls[i + 1:]:
+                if int(s1["amount_paise"]) + int(s2["amount_paise"]) == credit_amt:
+                    sid1 = s1["settlement_id"]
+                    sid2 = s2["settlement_id"]
+                    matched_cids.add(c["credit_id"])
+                    results.append(_make_candidate(
+                        c["credit_id"], PROPOSE, [sid1, sid2], "pair_sum",
+                        f"credit amount equals sum of {sid1} + {sid2}",
+                        verification,
+                    ))
+                    found = True
                     break
             if found:
                 break
