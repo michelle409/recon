@@ -4,7 +4,7 @@ from __future__ import annotations
 Reconciliation matcher — rungs 1 and 2.
 
 Stage order (post-dedupe):
-  exact_utr -> partial_utr -> fuzzy_utr -> amount_date -> pair_sum -> refuse
+  exact_utr -> partial_utr -> fuzzy_utr -> amount_date -> llm -> pair_sum -> refuse
 
 RATIONALE: PROPOSE is terminal, so stages with more evidence must precede
 stages with less.  fuzzy_utr (narration similarity + exact amount + date)
@@ -346,24 +346,180 @@ def _stage_amount_date(
 
     for c in credits:
         credit_amt = int(c["amount_paise"])
-        matched_sid: str | None = None
+        matched_sids: list[str] = []
 
         for s in pool_by_amount.get(credit_amt, []):
             if s["settlement_id"] not in pool:
                 continue
             if _date_ok(c, s):
-                matched_sid = s["settlement_id"]
-                break
+                matched_sids.append(s["settlement_id"])
 
-        if matched_sid:
+        if matched_sids:
             results.append(_make_candidate(
-                c["credit_id"], PROPOSE, [matched_sid], "amount_date",
-                f"amount+date match to {matched_sid}", verification,
+                c["credit_id"], PROPOSE, matched_sids, "amount_date",
+                f"amount+date match to {matched_sids}", verification,
             ))
         else:
             unmatched.append(c)
 
     return results, unmatched
+
+
+# ORDERING: cost says the LLM runs after every cheaper stage; evidence
+# strength says narration reasoning outranks bare amount+date. Both are
+# satisfied by making PROPOSE finality evidence-class-relative: this
+# stage runs last but may reopen amount_date PROPOSEs, because it brings
+# evidence (narration semantics) they never had. It does NOT reopen
+# exact/partial/fuzzy PROPOSEs (narration evidence was already consulted;
+# two narration-similar candidates deserve a human review) and does NOT
+# touch REFUSEs (a near-miss is a decisive amount mismatch; a bare REFUSE
+# has, by construction, zero candidates passing this stage's own
+# pre-filter — the pre-filter equals the amount_date predicate).
+# Corollary: under exact-amount verification, the LLM cannot CREATE
+# matches. It can only break ties. That is its entire earned territory.
+
+
+def _stage_llm(
+    r4: list[MatchCandidate],
+    settlements: list[dict],
+    credits_data: list[dict],
+    pool: set[str],
+    verification: dict[str, str],
+    llm_stats: dict,
+    client: object | None = None,
+    cache_dir: str | None = None,
+) -> list[MatchCandidate]:
+    from recon.llm_candidates import dispose, propose
+
+    setl_by_id = {s["settlement_id"]: s for s in settlements}
+    credit_by_id = {c["credit_id"]: c for c in credits_data}
+
+    eligible_indices = [
+        i for i, r in enumerate(r4)
+        if r.route == PROPOSE and r.stage == "amount_date"
+    ]
+    llm_stats["eligible_credits"] = len(eligible_indices)
+
+    conversion_candidates: dict[int, tuple[str, str]] = {}
+
+    for idx in eligible_indices:
+        r = r4[idx]
+        credit = credit_by_id.get(r.credit_id, {})
+        narration_raw = credit.get("narration_raw", "")
+        txn_date = credit.get("txn_date", "")
+
+        cand_dicts = []
+        for sid in r.settlement_ids:
+            if sid not in pool:
+                continue
+            s = setl_by_id.get(sid)
+            if s is None:
+                continue
+            cand_dicts.append({
+                "settlement_id": sid,
+                "utr": s["utr"],
+                "amount_paise": s["amount_paise"],
+                "expected_credit_date": calendars.add_business_days(s["created_at"], 2),
+            })
+
+        if not cand_dicts:
+            continue
+
+        proposal, cache_hit = propose(
+            narration_raw, cand_dicts, client, cache_dir,
+            credit_id=r.credit_id, txn_date=txn_date,
+        )
+
+        if cache_hit:
+            llm_stats["cache_hits"] += 1
+        else:
+            llm_stats["api_calls"] += 1
+
+        if proposal is None:
+            llm_stats["errors"] += 1
+            r4[idx] = MatchCandidate(
+                credit_id=r.credit_id,
+                route=r.route,
+                settlement_ids=r.settlement_ids,
+                stage=r.stage,
+                detail=r.detail + " | llm: api error",
+                verification=r.verification,
+            )
+            continue
+
+        llm_stats["proposals_total"] += 1
+        accepted, rejected = dispose(proposal, narration_raw, cand_dicts)
+
+        for _, reason in rejected:
+            llm_stats["rejected"][reason] = llm_stats["rejected"].get(reason, 0) + 1
+
+        llm_stats["accepted"] += len(accepted)
+
+        if len(accepted) == 1:
+            sid = accepted[0].settlement_id
+            evidence = sorted(set(accepted[0].cited_evidence))
+            detail = (
+                f"LLM cited fragment(s) {evidence} present in narration "
+                f"and in UTR of {sid}; amount exact; in window"
+            )
+            conversion_candidates[idx] = (sid, detail)
+        elif len(accepted) == 0:
+            r4[idx] = MatchCandidate(
+                credit_id=r.credit_id,
+                route=r.route,
+                settlement_ids=r.settlement_ids,
+                stage=r.stage,
+                detail=r.detail + " | llm: no grounded single candidate",
+                verification=r.verification,
+            )
+            llm_stats["upheld_propose"] += 1
+        else:
+            r4[idx] = MatchCandidate(
+                credit_id=r.credit_id,
+                route=r.route,
+                settlement_ids=r.settlement_ids,
+                stage=r.stage,
+                detail=r.detail + " | llm: grounded evidence for multiple candidates",
+                verification=r.verification,
+            )
+            llm_stats["upheld_propose"] += 1
+
+    sid_to_indices: dict[str, list[int]] = {}
+    for idx, (sid, _) in conversion_candidates.items():
+        sid_to_indices.setdefault(sid, []).append(idx)
+
+    for idx, (sid, detail) in conversion_candidates.items():
+        competing = sid_to_indices.get(sid, [])
+        if len(competing) > 1:
+            r = r4[idx]
+            r4[idx] = MatchCandidate(
+                credit_id=r.credit_id,
+                route=r.route,
+                settlement_ids=r.settlement_ids,
+                stage=r.stage,
+                detail=r.detail + f" | llm: conversion conflict on {sid}",
+                verification=r.verification,
+            )
+            llm_stats["upheld_propose"] += 1
+        else:
+            r = r4[idx]
+            ver = verification.get(sid, "UNVERIFIED")
+            effective_route = AUTO_MATCH if ver != "UNVERIFIED" else PROPOSE
+            r4[idx] = MatchCandidate(
+                credit_id=r.credit_id,
+                route=effective_route,
+                settlement_ids=[sid],
+                stage="llm",
+                detail=detail,
+                verification=ver,
+            )
+            if effective_route == AUTO_MATCH:
+                pool.discard(sid)
+                llm_stats["converted_to_auto"] += 1
+            else:
+                llm_stats["upheld_propose"] += 1
+
+    return r4
 
 
 # ── stage 5: pair-sum ─────────────────────────────────────────────────────────
@@ -439,6 +595,8 @@ def run_matcher(
     pipeline: str = "det+fuzzy",
     fuzzy_threshold: int = 70,
     as_of: str | None = None,
+    _llm_client: object | None = None,
+    _llm_cache_dir: str | None = None,
 ) -> dict:
     settlements = _read_csv(settlements_path)
     lines = _read_csv(lines_path)
@@ -455,7 +613,7 @@ def run_matcher(
     r2, survivors = _stage_exact_utr(survivors, settlements, pool, verification)
     r3, survivors = _stage_partial_utr(survivors, settlements, pool, verification)
 
-    if pipeline == "det+fuzzy":
+    if pipeline in ("det+fuzzy", "det+fuzzy+llm"):
         r_fuzzy, survivors = _stage_fuzzy_utr(
             survivors, settlements, pool, verification, fuzzy_threshold
         )
@@ -463,6 +621,28 @@ def run_matcher(
         r_fuzzy = []
 
     r4, survivors = _stage_amount_date(survivors, settlements, pool, verification)
+
+    llm_stats: dict = {}
+    if pipeline == "det+fuzzy+llm":
+        from recon.llm_candidates import MODEL as _LLM_MODEL, PROMPT_VERSION as _LLM_PV
+        llm_stats = {
+            "model": _LLM_MODEL,
+            "prompt_version": _LLM_PV,
+            "eligible_credits": 0,
+            "api_calls": 0,
+            "cache_hits": 0,
+            "errors": 0,
+            "proposals_total": 0,
+            "accepted": 0,
+            "rejected": {},
+            "converted_to_auto": 0,
+            "upheld_propose": 0,
+        }
+        r4 = _stage_llm(
+            r4, settlements, credits, pool, verification, llm_stats,
+            client=_llm_client, cache_dir=_llm_cache_dir,
+        )
+
     r5, survivors = _stage_pair_sum(survivors, settlements, pool, verification)
     refuse = _stage_refuse(survivors)
 
@@ -487,6 +667,7 @@ def run_matcher(
             "pipeline": pipeline,
             "fuzzy_threshold": fuzzy_threshold,
             "as_of": as_of,
+            "llm": llm_stats if llm_stats else None,
         },
         "credits": [
             {
@@ -516,7 +697,7 @@ def run_matcher(
     exc_rows = ledger.build_exceptions(output, credits, as_of)
     _write_csv(out_path / "exceptions.csv", exc_rows)
 
-    _print_summary(summary, journal_rows, exc_rows)
+    _print_summary(summary, journal_rows, exc_rows, llm_stats or None)
     return output
 
 
@@ -528,6 +709,7 @@ def _print_summary(
     summary: dict,
     journal_rows: list[dict],
     exc_rows: list[dict],
+    llm_stats: dict | None = None,
 ) -> None:
     print("\n=== Matcher summary ===")
     print(f"Total credits  : {summary['total_credits']}")
@@ -536,6 +718,18 @@ def _print_summary(
     print(f"REFUSE         : {summary['refuse']}")
     print(f"DUPLICATE      : {summary['duplicate']}")
     print(f"DUPLICATE_SUSP : {summary['duplicate_suspected']}")
+
+    if llm_stats:
+        e = llm_stats.get("eligible_credits", 0)
+        a = llm_stats.get("api_calls", 0)
+        m = llm_stats.get("cache_hits", 0)
+        acc = llm_stats.get("accepted", 0)
+        rej = sum(llm_stats.get("rejected", {}).values())
+        conv = llm_stats.get("converted_to_auto", 0)
+        print(
+            f"LLM            : {e} eligible, {a} api calls ({m} cached), "
+            f"{acc} accepted, {rej} rejected, {conv} converted to auto-match"
+        )
 
     itc = sum(
         r["amount_paise"] for r in journal_rows if r["entry_type"] == "dr_gst_itc"
@@ -569,7 +763,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--ground-truth", type=Path, default=None)
     parser.add_argument(
-        "--pipeline", choices=["det", "det+fuzzy"], default="det+fuzzy",
+        "--pipeline", choices=["det", "det+fuzzy", "det+fuzzy+llm"], default="det+fuzzy",
     )
     parser.add_argument("--fuzzy-threshold", type=int, default=70)
     parser.add_argument("--as-of", type=str, default=None)
@@ -605,6 +799,20 @@ def main() -> None:
                     print(f"  {kk:33s}: {vv}")
             else:
                 print(f"{k:35s}: {v}")
+
+        llm_credits = [
+            r for r in output["credits"]
+            if r["stage"] == "llm" and r["route"] == "AUTO_MATCH"
+        ]
+        if llm_credits:
+            gt_c2s = gt["credit_to_settlements"]
+            correct = sum(
+                1 for r in llm_credits
+                if set(r["settlement_ids"]) == set(gt_c2s.get(r["credit_id"], []))
+            )
+            total = len(llm_credits)
+            pct = correct / total if total else 0.0
+            print(f"\nLLM tie-break precision      : {correct}/{total} ({pct:.1%})")
 
 
 if __name__ == "__main__":
