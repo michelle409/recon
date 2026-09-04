@@ -1,0 +1,14 @@
+exception_id,credit_id,category,age_days,blocked_amount_paise,routing_reason,suggested_next_action
+exc_0001,bc_002,PROPOSE,43,26239392,amount+date match to ['setl_4UZ3WoXnlpUVQi'],manually review tied candidates: setl_4UZ3WoXnlpUVQi
+exc_0002,bc_003,PROPOSE,32,48020357,narration token is substring of UTR of setl_cR9GLw4yWQdNuu,manually review tied candidates: setl_cR9GLw4yWQdNuu
+exc_0003,bc_006,PROPOSE,39,64163440,narration token is substring of UTR of setl_W122qOJDkyMQyy,manually review tied candidates: setl_W122qOJDkyMQyy
+exc_0004,bc_007,PROPOSE,11,76190919,narration token is substring of UTR of setl_T1OUBRknyuIRRj,manually review tied candidates: setl_T1OUBRknyuIRRj
+exc_0005,bc_008,PROPOSE,42,20240661,narration token is substring of UTR of setl_siRrGGRLgTM9DQ,manually review tied candidates: setl_siRrGGRLgTM9DQ
+exc_0006,bc_009,PROPOSE,46,45675247,narration token is substring of UTR of setl_vfi5jE9VoBNnTv,manually review tied candidates: setl_vfi5jE9VoBNnTv
+exc_0007,bc_012,PROPOSE,19,34765059,narration token is substring of UTR of setl_LAgdd0yMz1WMCC,manually review tied candidates: setl_LAgdd0yMz1WMCC
+exc_0008,bc_013,PROPOSE,28,9932936,narration token is substring of UTR of setl_qWe8ykBFTVYXbx,manually review tied candidates: setl_qWe8ykBFTVYXbx
+exc_0009,bc_017,PROPOSE,35,62213191,narration token is substring of UTR of setl_M32d0hPCVG0fq9,manually review tied candidates: setl_M32d0hPCVG0fq9
+exc_0010,bc_017_d1,DUPLICATE,35,62213191,exact duplicate of bc_017,"export artifact; verify not a real transaction, then drop"
+exc_0011,bc_018,PROPOSE,11,56858998,narration token is substring of UTR of setl_mLtuFbqmqODsf7,manually review tied candidates: setl_mLtuFbqmqODsf7
+exc_0012,bc_018_d1,DUPLICATE,11,56858998,exact duplicate of bc_018,"export artifact; verify not a real transaction, then drop"
+exc_0013,bc_019_d1,DUPLICATE,47,35558911,exact duplicate of bc_019,"export artifact; verify not a real transaction, then drop"

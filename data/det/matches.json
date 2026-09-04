@@ -1,0 +1,242 @@
+{
+  "run": {
+    "pipeline": "det",
+    "fuzzy_threshold": 70,
+    "as_of": "2026-02-24",
+    "llm": null
+  },
+  "credits": [
+    {
+      "credit_id": "bc_001",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_brnTP3fAbnFbmO"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_brnTP3fAbnFbmO",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_002",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_4UZ3WoXnlpUVQi"
+      ],
+      "stage": "amount_date",
+      "detail": "amount+date match to ['setl_4UZ3WoXnlpUVQi']",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_003",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_cR9GLw4yWQdNuu"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_cR9GLw4yWQdNuu",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_004",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_mgcLRdTyon1dFr"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_mgcLRdTyon1dFr",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_005",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_Ba7mQiOj5qOpx4"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_Ba7mQiOj5qOpx4",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_006",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_W122qOJDkyMQyy"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_W122qOJDkyMQyy",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_007",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_T1OUBRknyuIRRj"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_T1OUBRknyuIRRj",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_008",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_siRrGGRLgTM9DQ"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_siRrGGRLgTM9DQ",
+      "verification": "DRIFT"
+    },
+    {
+      "credit_id": "bc_009",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_vfi5jE9VoBNnTv"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_vfi5jE9VoBNnTv",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_010",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_l4NbVE8LwDBpQ8"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_l4NbVE8LwDBpQ8",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_011",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_odbJIqO3hMOBBk"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_odbJIqO3hMOBBk",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_012",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_LAgdd0yMz1WMCC"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_LAgdd0yMz1WMCC",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_013",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_qWe8ykBFTVYXbx"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_qWe8ykBFTVYXbx",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_014",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_bwcYuBLyLfA559"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_bwcYuBLyLfA559",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_015",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_DF93RzM4USRUpT"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_DF93RzM4USRUpT",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_016",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_7FtywiPu3FFWbX"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_7FtywiPu3FFWbX",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_017",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_M32d0hPCVG0fq9"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_M32d0hPCVG0fq9",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_017_d1",
+      "route": "DUPLICATE",
+      "settlement_ids": [],
+      "stage": "dedupe",
+      "detail": "exact duplicate of bc_017",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "credit_id": "bc_018",
+      "route": "PROPOSE",
+      "settlement_ids": [
+        "setl_mLtuFbqmqODsf7"
+      ],
+      "stage": "partial_utr",
+      "detail": "narration token is substring of UTR of setl_mLtuFbqmqODsf7",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_018_d1",
+      "route": "DUPLICATE",
+      "settlement_ids": [],
+      "stage": "dedupe",
+      "detail": "exact duplicate of bc_018",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "credit_id": "bc_019",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_BZdYZScy5NBWg0"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_BZdYZScy5NBWg0",
+      "verification": "EXACT"
+    },
+    {
+      "credit_id": "bc_019_d1",
+      "route": "DUPLICATE",
+      "settlement_ids": [],
+      "stage": "dedupe",
+      "detail": "exact duplicate of bc_019",
+      "verification": "UNVERIFIED"
+    },
+    {
+      "credit_id": "bc_020",
+      "route": "AUTO_MATCH",
+      "settlement_ids": [
+        "setl_uxjT0UXNX8aNZo"
+      ],
+      "stage": "exact_utr",
+      "detail": "narration token matches UTR of setl_uxjT0UXNX8aNZo",
+      "verification": "EXACT"
+    }
+  ],
+  "summary": {
+    "total_credits": 23,
+    "auto_match": 10,
+    "propose": 10,
+    "refuse": 0,
+    "duplicate": 3,
+    "duplicate_suspected": 0
+  }
+}

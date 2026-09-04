@@ -1,0 +1,41 @@
+settlement_id,credit_id,date,entry_type,amount_paise,description
+setl_brnTP3fAbnFbmO,bc_001,2026-01-19,dr_bank,63766192,Bank credit bc_001 UTR THV3A3ZMF8MDD4V3
+setl_brnTP3fAbnFbmO,bc_001,2026-01-19,dr_fees,832787,Gateway fees for setl_brnTP3fAbnFbmO
+setl_brnTP3fAbnFbmO,bc_001,2026-01-19,dr_gst_itc,149903,GST ITC for setl_brnTP3fAbnFbmO
+setl_brnTP3fAbnFbmO,bc_001,2026-01-19,cr_receivables,64748882,Settlement setl_brnTP3fAbnFbmO receivables cleared
+setl_mgcLRdTyon1dFr,bc_004,2026-01-30,dr_bank,43325298,Bank credit bc_004 UTR 30LVYLKFXHKC856W
+setl_mgcLRdTyon1dFr,bc_004,2026-01-30,dr_fees,586197,Gateway fees for setl_mgcLRdTyon1dFr
+setl_mgcLRdTyon1dFr,bc_004,2026-01-30,dr_gst_itc,105515,GST ITC for setl_mgcLRdTyon1dFr
+setl_mgcLRdTyon1dFr,bc_004,2026-01-30,cr_receivables,44017010,Settlement setl_mgcLRdTyon1dFr receivables cleared
+setl_Ba7mQiOj5qOpx4,bc_005,2026-01-22,dr_bank,40273427,Bank credit bc_005 UTR FOKZIXZAREIYAZ39
+setl_Ba7mQiOj5qOpx4,bc_005,2026-01-22,dr_fees,590830,Gateway fees for setl_Ba7mQiOj5qOpx4
+setl_Ba7mQiOj5qOpx4,bc_005,2026-01-22,dr_gst_itc,106350,GST ITC for setl_Ba7mQiOj5qOpx4
+setl_Ba7mQiOj5qOpx4,bc_005,2026-01-22,cr_receivables,40970607,Settlement setl_Ba7mQiOj5qOpx4 receivables cleared
+setl_l4NbVE8LwDBpQ8,bc_010,2026-02-17,dr_bank,65981261,Bank credit bc_010 UTR 3N0AJUFQYMBNW8BK
+setl_l4NbVE8LwDBpQ8,bc_010,2026-02-17,dr_fees,933331,Gateway fees for setl_l4NbVE8LwDBpQ8
+setl_l4NbVE8LwDBpQ8,bc_010,2026-02-17,dr_gst_itc,168002,GST ITC for setl_l4NbVE8LwDBpQ8
+setl_l4NbVE8LwDBpQ8,bc_010,2026-02-17,cr_receivables,67082594,Settlement setl_l4NbVE8LwDBpQ8 receivables cleared
+setl_odbJIqO3hMOBBk,bc_011,2026-02-24,dr_bank,42680156,Bank credit bc_011 UTR 0QPSVY74ZQ50OP7X
+setl_odbJIqO3hMOBBk,bc_011,2026-02-24,dr_fees,613942,Gateway fees for setl_odbJIqO3hMOBBk
+setl_odbJIqO3hMOBBk,bc_011,2026-02-24,dr_gst_itc,110510,GST ITC for setl_odbJIqO3hMOBBk
+setl_odbJIqO3hMOBBk,bc_011,2026-02-24,cr_receivables,43404608,Settlement setl_odbJIqO3hMOBBk receivables cleared
+setl_bwcYuBLyLfA559,bc_014,2026-02-06,dr_bank,24123681,Bank credit bc_014 UTR 460KHFSU4SE2KYT5
+setl_bwcYuBLyLfA559,bc_014,2026-02-06,dr_fees,190588,Gateway fees for setl_bwcYuBLyLfA559
+setl_bwcYuBLyLfA559,bc_014,2026-02-06,dr_gst_itc,34305,GST ITC for setl_bwcYuBLyLfA559
+setl_bwcYuBLyLfA559,bc_014,2026-02-06,cr_receivables,24348574,Settlement setl_bwcYuBLyLfA559 receivables cleared
+setl_DF93RzM4USRUpT,bc_015,2026-01-20,dr_bank,37000459,Bank credit bc_015 UTR 835TVV8Y5SIC4S8P
+setl_DF93RzM4USRUpT,bc_015,2026-01-20,dr_fees,513072,Gateway fees for setl_DF93RzM4USRUpT
+setl_DF93RzM4USRUpT,bc_015,2026-01-20,dr_gst_itc,92353,GST ITC for setl_DF93RzM4USRUpT
+setl_DF93RzM4USRUpT,bc_015,2026-01-20,cr_receivables,37605884,Settlement setl_DF93RzM4USRUpT receivables cleared
+setl_7FtywiPu3FFWbX,bc_016,2026-02-04,dr_bank,71000585,Bank credit bc_016 UTR R5BFYCW8IHYFZ9S9
+setl_7FtywiPu3FFWbX,bc_016,2026-02-04,dr_fees,1058397,Gateway fees for setl_7FtywiPu3FFWbX
+setl_7FtywiPu3FFWbX,bc_016,2026-02-04,dr_gst_itc,190511,GST ITC for setl_7FtywiPu3FFWbX
+setl_7FtywiPu3FFWbX,bc_016,2026-02-04,cr_receivables,72249493,Settlement setl_7FtywiPu3FFWbX receivables cleared
+setl_BZdYZScy5NBWg0,bc_019,2026-01-08,dr_bank,35558911,Bank credit bc_019 UTR 1U2ZNXFIRJLYQZ11
+setl_BZdYZScy5NBWg0,bc_019,2026-01-08,dr_fees,513874,Gateway fees for setl_BZdYZScy5NBWg0
+setl_BZdYZScy5NBWg0,bc_019,2026-01-08,dr_gst_itc,92496,GST ITC for setl_BZdYZScy5NBWg0
+setl_BZdYZScy5NBWg0,bc_019,2026-01-08,cr_receivables,36165281,Settlement setl_BZdYZScy5NBWg0 receivables cleared
+setl_uxjT0UXNX8aNZo,bc_020,2026-01-20,dr_bank,25265745,Bank credit bc_020 UTR OAR4G58O9QJP0XSM
+setl_uxjT0UXNX8aNZo,bc_020,2026-01-20,dr_fees,447173,Gateway fees for setl_uxjT0UXNX8aNZo
+setl_uxjT0UXNX8aNZo,bc_020,2026-01-20,dr_gst_itc,80491,GST ITC for setl_uxjT0UXNX8aNZo
+setl_uxjT0UXNX8aNZo,bc_020,2026-01-20,cr_receivables,25793409,Settlement setl_uxjT0UXNX8aNZo receivables cleared
