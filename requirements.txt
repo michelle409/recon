@@ -6,3 +6,4 @@ pytest
 matplotlib
 pdfplumber
 razorpay
+rapidfuzz

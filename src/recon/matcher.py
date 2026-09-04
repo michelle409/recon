@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 """
-Deterministic reconciliation matcher — rung 1.
+Reconciliation matcher — rungs 1 and 2.
 
-Pipeline stages:
-  0  load + verify internal arithmetic per settlement
-  1  deduplication  (exact duplicate / suspected duplicate)
-  2  exact UTR      (narration token ≥8 chars matches settlement UTR)
-  3  partial UTR    (token is substring of settlement UTR)
-  4  amount + date  (exact paise, ±2 business days)
-  5  pair-sum       (two credits on same date sum to one settlement)
-  6  refuse         (anything remaining)
+Stage order (post-dedupe):
+  exact_utr -> partial_utr -> fuzzy_utr -> amount_date -> pair_sum -> refuse
+
+RATIONALE: PROPOSE is terminal, so stages with more evidence must precede
+stages with less.  fuzzy_utr (narration similarity + exact amount + date)
+outranks amount_date (amount + date only).  Running fuzzy after amount_date
+would let a two-way amount tie terminate as PROPOSE before the narration is
+ever consulted.
 
 NEVER imports recon.fees — knows nothing about fee schedules.
 """
@@ -40,9 +40,28 @@ def _read_csv(path: Path) -> list[dict]:
         return list(csv.DictReader(f))
 
 
+def _write_csv(path: Path, rows: list[dict]) -> None:
+    if not rows:
+        path.write_text("", encoding="utf-8")
+        return
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows(rows)
+
+
 def _utr_tokens(narration: str) -> list[str]:
-    """Extract uppercase alphanumeric tokens with length ≥ 8."""
+    """Uppercase alphanumeric tokens with length >= 8."""
     return [t for t in re.split(r"[^A-Z0-9]", narration.upper()) if len(t) >= 8]
+
+
+def _date_ok(credit: dict, settlement: dict) -> bool:
+    """True if credit is within ±2 business days of expected settlement date."""
+    expected = calendars.add_business_days(settlement["created_at"], 2)
+    dist = abs(calendars.business_days_between(credit["txn_date"], expected))
+    if dist > 2:
+        dist = abs(calendars.business_days_between(credit["value_date"], expected))
+    return dist <= 2
 
 
 # ── stage 0: load and verify ──────────────────────────────────────────────────
@@ -50,7 +69,7 @@ def _utr_tokens(narration: str) -> list[str]:
 def _verify_settlements(
     settlements: list[dict], lines: list[dict]
 ) -> dict[str, str]:
-    """Return settlement_id → "EXACT" | "DRIFT" | "UNVERIFIED"."""
+    """Return settlement_id -> "EXACT" | "DRIFT" | "UNVERIFIED"."""
     by_setl: dict[str, list[dict]] = {}
     for ln in lines:
         by_setl.setdefault(ln["settlement_id"], []).append(ln)
@@ -76,16 +95,33 @@ def _verify_settlements(
     return result
 
 
+def _make_candidate(
+    credit_id: str,
+    route: str,
+    sids: list[str],
+    stage: str,
+    detail: str,
+    verification: dict[str, str],
+) -> MatchCandidate:
+    """Build a MatchCandidate, downgrading AUTO_MATCH to PROPOSE on UNVERIFIED."""
+    primary_sid = sids[0] if sids else ""
+    ver = verification.get(primary_sid, "UNVERIFIED") if primary_sid else "UNVERIFIED"
+    effective_route = route
+    if route == AUTO_MATCH and ver == "UNVERIFIED":
+        effective_route = PROPOSE
+    return MatchCandidate(
+        credit_id=credit_id,
+        route=effective_route,
+        settlement_ids=sids,
+        stage=stage,
+        detail=detail,
+        verification=ver,
+    )
+
+
 # ── stage 1: deduplication ────────────────────────────────────────────────────
 
-def _dedupe(
-    credits: list[dict],
-) -> tuple[list[MatchCandidate], list[dict]]:
-    """
-    Exact duplicates (same txn_date + amount_paise + narration_raw) → DUPLICATE.
-    Same (txn_date + amount_paise) but different narrations → DUPLICATE_SUSPECTED.
-    The alphabetically-first credit_id in each group is kept as the survivor.
-    """
+def _dedupe(credits: list[dict]) -> tuple[list[MatchCandidate], list[dict]]:
     exact_groups: dict[tuple, list[dict]] = {}
     for c in credits:
         key = (c["txn_date"], c["amount_paise"], c["narration_raw"])
@@ -166,13 +202,9 @@ def _stage_exact_utr(
                 matched_sid = sid
                 break
         if matched_sid:
-            candidates.append(MatchCandidate(
-                credit_id=c["credit_id"],
-                route=AUTO_MATCH,
-                settlement_ids=[matched_sid],
-                stage="exact_utr",
-                detail=f"narration token matches UTR of {matched_sid}",
-                verification=verification.get(matched_sid, "UNVERIFIED"),
+            candidates.append(_make_candidate(
+                c["credit_id"], AUTO_MATCH, [matched_sid], "exact_utr",
+                f"narration token matches UTR of {matched_sid}", verification,
             ))
         else:
             unmatched.append(c)
@@ -181,7 +213,6 @@ def _stage_exact_utr(
     for r in resolved:
         if r.route == AUTO_MATCH:
             pool.discard(r.settlement_ids[0])
-
     return resolved, unmatched
 
 
@@ -194,14 +225,12 @@ def _stage_partial_utr(
     verification: dict[str, str],
 ) -> tuple[list[MatchCandidate], list[dict]]:
     pool_setls = [s for s in settlements if s["settlement_id"] in pool]
-
     results: list[MatchCandidate] = []
     unmatched: list[dict] = []
 
     for c in credits:
-        tokens = _utr_tokens(c["narration_raw"])
         matched_sid: str | None = None
-        for token in tokens:
+        for token in _utr_tokens(c["narration_raw"]):
             for s in pool_setls:
                 if token in s["utr"]:
                     matched_sid = s["settlement_id"]
@@ -209,18 +238,93 @@ def _stage_partial_utr(
             if matched_sid:
                 break
         if matched_sid:
-            results.append(MatchCandidate(
-                credit_id=c["credit_id"],
-                route=PROPOSE,
-                settlement_ids=[matched_sid],
-                stage="partial_utr",
-                detail=f"narration token is substring of UTR of {matched_sid}",
-                verification=verification.get(matched_sid, "UNVERIFIED"),
+            results.append(_make_candidate(
+                c["credit_id"], PROPOSE, [matched_sid], "partial_utr",
+                f"narration token is substring of UTR of {matched_sid}", verification,
             ))
         else:
             unmatched.append(c)
 
     return results, unmatched
+
+
+# ── stage 3b: fuzzy UTR ───────────────────────────────────────────────────────
+
+def _stage_fuzzy_utr(
+    credits: list[dict],
+    settlements: list[dict],
+    pool: set[str],
+    verification: dict[str, str],
+    threshold: int,
+) -> tuple[list[MatchCandidate], list[dict]]:
+    """
+    Fuzzy narration-to-UTR matching with amount and date verification.
+    A candidate survives only when:
+      - fuzzy score >= threshold (filters candidates)
+      - credit.amount_paise == settlement.amount_paise exactly
+      - date within ±2 business days
+    Routing is determined by survivor count (claim-conflict rule).
+    Stage name: "fuzzy_utr".
+    """
+    from recon.fuzzy import fuzzy_candidates
+
+    pool_setls = [s for s in settlements if s["settlement_id"] in pool]
+    results: list[MatchCandidate] = []
+    unmatched: list[dict] = []
+
+    for c in credits:
+        # fuzzy_candidates returns sorted-by-score-desc list
+        raw = fuzzy_candidates(
+            c["narration_raw"],
+            pool_setls,
+            set(),          # already filtered to pool_setls; skip re-exclusion
+            threshold,
+        )
+
+        # Apply arithmetic + date verification to filter survivors
+        survivors: list[tuple[str, int, str]] = []
+        for sid, score, token in raw:
+            if sid not in pool:
+                continue
+            s = next((x for x in pool_setls if x["settlement_id"] == sid), None)
+            if s is None:
+                continue
+            if int(c["amount_paise"]) != int(s["amount_paise"]):
+                continue
+            if not _date_ok(c, s):
+                continue
+            survivors.append((sid, score, token))
+
+        if not survivors:
+            unmatched.append(c)
+            continue
+
+        if len(survivors) == 1:
+            sid, score, token = survivors[0]
+            detail = (
+                f"fuzzy token '{token}' ~ UTR of {sid} (score {score}), "
+                f"amount exact, in window"
+            )
+            results.append(_make_candidate(
+                c["credit_id"], AUTO_MATCH, [sid], "fuzzy_utr", detail, verification,
+            ))
+        else:
+            # Multiple survivors → PROPOSE to all
+            sids = [sid for sid, _, _ in survivors]
+            best_sid, best_score, best_token = survivors[0]
+            detail = (
+                f"fuzzy token '{best_token}' ~ UTR (score {best_score}), "
+                f"multiple survivors: {sids}"
+            )
+            results.append(_make_candidate(
+                c["credit_id"], PROPOSE, sids, "fuzzy_utr", detail, verification,
+            ))
+
+    resolved = resolve_conflicts(results)
+    for r in resolved:
+        if r.route == AUTO_MATCH:
+            pool.discard(r.settlement_ids[0])
+    return resolved, unmatched
 
 
 # ── stage 4: amount + date window ────────────────────────────────────────────
@@ -247,23 +351,14 @@ def _stage_amount_date(
         for s in pool_by_amount.get(credit_amt, []):
             if s["settlement_id"] not in pool:
                 continue
-            expected = calendars.add_business_days(s["created_at"], 2)
-            # Try txn_date; fall back to value_date
-            dist = abs(calendars.business_days_between(c["txn_date"], expected))
-            if dist > 2:
-                dist = abs(calendars.business_days_between(c["value_date"], expected))
-            if dist <= 2:
+            if _date_ok(c, s):
                 matched_sid = s["settlement_id"]
                 break
 
         if matched_sid:
-            results.append(MatchCandidate(
-                credit_id=c["credit_id"],
-                route=PROPOSE,
-                settlement_ids=[matched_sid],
-                stage="amount_date",
-                detail=f"amount+date match to {matched_sid}",
-                verification=verification.get(matched_sid, "UNVERIFIED"),
+            results.append(_make_candidate(
+                c["credit_id"], PROPOSE, [matched_sid], "amount_date",
+                f"amount+date match to {matched_sid}", verification,
             ))
         else:
             unmatched.append(c)
@@ -279,10 +374,6 @@ def _stage_pair_sum(
     pool: set[str],
     verification: dict[str, str],
 ) -> tuple[list[MatchCandidate], list[dict]]:
-    """
-    Detect clubbed credits: two credits on the same txn_date whose amounts
-    sum exactly to an unmatched settlement.  Both are PROPOSE to that settlement.
-    """
     by_date: dict[str, list[dict]] = {}
     for c in credits:
         by_date.setdefault(c["txn_date"], []).append(c)
@@ -308,13 +399,9 @@ def _stage_pair_sum(
                         cid_b = available[j]["credit_id"]
                         matched_cids.update([cid_a, cid_b])
                         for cid, other in [(cid_a, cid_b), (cid_b, cid_a)]:
-                            results.append(MatchCandidate(
-                                credit_id=cid,
-                                route=PROPOSE,
-                                settlement_ids=[sid],
-                                stage="pair_sum",
-                                detail=f"pair sum with {other} matches {sid}",
-                                verification=verification.get(sid, "UNVERIFIED"),
+                            results.append(_make_candidate(
+                                cid, PROPOSE, [sid], "pair_sum",
+                                f"pair sum with {other} matches {sid}", verification,
                             ))
                         found = True
                         break
@@ -349,10 +436,16 @@ def run_matcher(
     lines_path: Path,
     credits_path: Path,
     out_path: Path,
+    pipeline: str = "det+fuzzy",
+    fuzzy_threshold: int = 70,
+    as_of: str | None = None,
 ) -> dict:
     settlements = _read_csv(settlements_path)
     lines = _read_csv(lines_path)
     credits = _read_csv(credits_path)
+
+    if as_of is None:
+        as_of = max(c["txn_date"] for c in credits) if credits else "2026-01-01"
 
     verification = _verify_settlements(settlements, lines)
     pool: set[str] = {s["settlement_id"] for s in settlements}
@@ -361,12 +454,20 @@ def run_matcher(
 
     r2, survivors = _stage_exact_utr(survivors, settlements, pool, verification)
     r3, survivors = _stage_partial_utr(survivors, settlements, pool, verification)
+
+    if pipeline == "det+fuzzy":
+        r_fuzzy, survivors = _stage_fuzzy_utr(
+            survivors, settlements, pool, verification, fuzzy_threshold
+        )
+    else:
+        r_fuzzy = []
+
     r4, survivors = _stage_amount_date(survivors, settlements, pool, verification)
     r5, survivors = _stage_pair_sum(survivors, settlements, pool, verification)
     refuse = _stage_refuse(survivors)
 
     all_results: list[MatchCandidate] = (
-        dup_results + r2 + r3 + r4 + r5 + refuse
+        dup_results + r2 + r3 + r_fuzzy + r4 + r5 + refuse
     )
     all_results.sort(key=lambda r: r.credit_id)
 
@@ -382,6 +483,11 @@ def run_matcher(
     }
 
     output = {
+        "run": {
+            "pipeline": pipeline,
+            "fuzzy_threshold": fuzzy_threshold,
+            "as_of": as_of,
+        },
         "credits": [
             {
                 "credit_id": r.credit_id,
@@ -401,11 +507,28 @@ def run_matcher(
         json.dumps(output, indent=2), encoding="utf-8"
     )
 
-    _print_summary(summary)
+    # ── ledger outputs ────────────────────────────────────────────────────────
+    from recon import ledger
+
+    journal_rows = ledger.build_journal(output, settlements, lines, credits)
+    _write_csv(out_path / "journal_entries.csv", journal_rows)
+
+    exc_rows = ledger.build_exceptions(output, credits, as_of)
+    _write_csv(out_path / "exceptions.csv", exc_rows)
+
+    _print_summary(summary, journal_rows, exc_rows)
     return output
 
 
-def _print_summary(summary: dict) -> None:
+def _paise_to_rupees(paise: int) -> str:
+    return f"₹{paise // 100:,}.{paise % 100:02d}"
+
+
+def _print_summary(
+    summary: dict,
+    journal_rows: list[dict],
+    exc_rows: list[dict],
+) -> None:
     print("\n=== Matcher summary ===")
     print(f"Total credits  : {summary['total_credits']}")
     print(f"AUTO_MATCH     : {summary['auto_match']}")
@@ -414,27 +537,59 @@ def _print_summary(summary: dict) -> None:
     print(f"DUPLICATE      : {summary['duplicate']}")
     print(f"DUPLICATE_SUSP : {summary['duplicate_suspected']}")
 
+    itc = sum(
+        r["amount_paise"] for r in journal_rows if r["entry_type"] == "dr_gst_itc"
+    )
+    blocked = sum(
+        r["blocked_amount_paise"]
+        for r in exc_rows
+        if r["category"] != "DUPLICATE"
+    )
+    n_balanced = sum(1 for r in journal_rows if r["entry_type"] == "dr_bank")
+
+    print(f"\nITC-claimable GST  : {_paise_to_rupees(itc)}")
+    print(f"Blocked in exceptions: {_paise_to_rupees(blocked)}")
+    print(f"Journal balance check: PASS ({n_balanced} settlements)")
+
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Deterministic reconciliation matcher"
+        description="Reconciliation matcher (rungs 1 + 2)"
     )
     parser.add_argument(
-        "--settlements", type=Path, default=Path("data/generated/settlements.csv")
+        "--data", type=Path, default=Path("data/generated"),
+        help="Directory containing settlements.csv, recon_lines.csv, bank_credits.csv",
     )
-    parser.add_argument(
-        "--lines", type=Path, default=Path("data/generated/recon_lines.csv")
-    )
-    parser.add_argument(
-        "--credits", type=Path, default=Path("data/generated/bank_credits.csv")
-    )
-    parser.add_argument("--out", type=Path, default=Path("data/generated"))
+    # Legacy individual-file overrides (kept for test backwards-compat)
+    parser.add_argument("--settlements", type=Path, default=None)
+    parser.add_argument("--lines", type=Path, default=None)
+    parser.add_argument("--credits", type=Path, default=None)
+    parser.add_argument("--out", type=Path, default=None)
     parser.add_argument("--ground-truth", type=Path, default=None)
+    parser.add_argument(
+        "--pipeline", choices=["det", "det+fuzzy"], default="det+fuzzy",
+    )
+    parser.add_argument("--fuzzy-threshold", type=int, default=70)
+    parser.add_argument("--as-of", type=str, default=None)
     args = parser.parse_args()
 
-    output = run_matcher(args.settlements, args.lines, args.credits, args.out)
+    data = args.data
+    settlements_path = args.settlements or data / "settlements.csv"
+    lines_path = args.lines or data / "recon_lines.csv"
+    credits_path = args.credits or data / "bank_credits.csv"
+    out_path = args.out or data
+
+    output = run_matcher(
+        settlements_path,
+        lines_path,
+        credits_path,
+        out_path,
+        pipeline=args.pipeline,
+        fuzzy_threshold=args.fuzzy_threshold,
+        as_of=args.as_of,
+    )
 
     if args.ground_truth and args.ground_truth.exists():
         from recon import metrics
