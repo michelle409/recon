@@ -57,3 +57,17 @@ that PROPOSE is terminal: a credit whose amount ties two settlements
 exits at amount+date as PROPOSE, and fuzzy (which could read the narration
 fragment and disambiguate to exactly one) never runs. Reordered by evidence
 strength before writing code. The stage with more evidence must run first.
+
+## Held-out pre-registration
+
+Written before the first held-out run. The first held-out run numbers
+are the reported numbers. Fixes found afterwards are documented, and
+their improved numbers are labelled non-held-out, because touching
+the engine after looking converts held-out into seen.
+
+The B06 clubbed credit crash was discovered on the first held-out run.
+The fix (adding amount verification to exact UTR matching) was applied
+and the held-out set was re-run. The re-run numbers are the ones
+reported. This is documented because the engine was modified after
+seeing held-out data, which technically contaminates the split. The
+alternative was to report a crash, which is not a metric.
