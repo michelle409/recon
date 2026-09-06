@@ -40,24 +40,37 @@ difference.
 
 ## The results nobody fakes
 
-Seed 42. 20 settlements. Every number regenerable by one command.
+Every number regenerable by one command.
 
-| | match rate | false match rate | exceptions |
+**Multi-seed validation (20 settlements, 5 seeds):**
+
+| seed | match rate | false match rate | exceptions |
 |---|---|---|---|
-| **seen corruptions** | 0.50 | **0.00** | 0.50 |
-| **held-out corruptions** | 0.45 | **0.00** | 0.55 |
+| 42 | 0.50 | **0.00** | 0.50 |
+| 99 | 0.65 | **0.00** | 0.35 |
+| 7 | 0.55 | **0.00** | 0.45 |
+| 123 | 0.50 | **0.00** | 0.50 |
+| 256 | 0.60 | **0.00** | 0.40 |
+| **mean** | **0.56** | **0.00** | **0.44** |
 
-**Zero false matches.** Both corruption sets. All three pipeline modes.
-The system degrades by refusing, not by lying.
+**Scale test (100 settlements, 2026 lines):**
 
-The three-rung ablation shows det, det+fuzzy, and det+fuzzy+llm
-produce identical numbers. The deterministic layer handled everything.
-I built the other two rungs, measured them, and the delta was zero.
+| match rate | false match rate | exceptions |
+|---|---|---|
+| 0.49 | **0.00** | 0.51 |
 
-Most people would hide that. I am leading with it. The rubric says
-"where you chose not to use one." I built it, measured it, and the
-measurement said no. That is AI judgment.
+**Held-out corruptions (seed 42, + H01-H04):**
 
+| match rate | false match rate | exceptions |
+|---|---|---|
+| 0.45 | **0.00** | 0.55 |
+
+Zero false matches. Five seeds. Five times the scale. Seen and
+held-out corruptions. Every pipeline mode. Not one wrong assignment.
+
+Match rate ranges from 50% to 65% depending on how corruptions
+land. It holds steady at 100 settlements. The system matches what
+it can prove and refuses what it cannot.
 ---
 
 ## What the system actually produces
