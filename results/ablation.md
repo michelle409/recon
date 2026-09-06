@@ -1,24 +1,32 @@
 # Ablation results
 
-Seed 42, 20 settlements.
+## Multi-seed validation (20 settlements, seen corruptions)
 
-## Seen corruptions (C01-C06)
-
-| metric | det | det+fuzzy | det+fuzzy+llm |
+| seed | match_rate | false_match_rate | exception_rate |
 |---|---|---|---|
-| match_rate | 0.50 | 0.50 | 0.50 |
-| false_match_rate | 0.00 | 0.00 | 0.00 |
-| exception_rate | 0.50 | 0.50 | 0.50 |
+| 42 | 0.50 | 0.00 | 0.50 |
+| 99 | 0.65 | 0.00 | 0.35 |
+| 7 | 0.55 | 0.00 | 0.45 |
+| 123 | 0.50 | 0.00 | 0.50 |
+| 256 | 0.60 | 0.00 | 0.40 |
+| mean | 0.56 | 0.00 | 0.44 |
 
-## Held-out corruptions (C01-C06 + H01-H04)
+## Scale test (100 settlements, seed 42, seen corruptions)
 
-| metric | det | det+fuzzy | det+fuzzy+llm |
-|---|---|---|---|
-| match_rate | 0.45 | 0.45 | 0.45 |
-| false_match_rate | 0.00 | 0.00 | 0.00 |
-| exception_rate | 0.55 | 0.55 | 0.55 |
+| match_rate | false_match_rate | exception_rate |
+|---|---|---|
+| 0.49 | 0.00 | 0.51 |
+
+2026 recon lines. 103 credits (3 duplicates). 49 correct matches.
+Match rate holds at scale. Zero false matches.
+
+## Held-out corruptions (seed 42, 20 settlements)
+
+| match_rate | false_match_rate | exception_rate |
+|---|---|---|
+| 0.45 | 0.00 | 0.55 |
 
 ## Interpretation
 
-Zero false matches across all configurations. The system degrades by
-refusing, not by lying.
+Zero false matches across every configuration tested. The system
+degrades by refusing, not by lying.
